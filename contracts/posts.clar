@@ -34,8 +34,15 @@
   (let ((post (unwrap! (map-get? posts post-id) (err u404))))
     (if (map-get? post-likes {post-id: post-id, user: tx-sender})
       (err u403)
-      (ok (map-set posts post-id 
-        (merge post {likes: (+ (get likes post) u1)})))
+      (begin
+        (map-set post-likes {post-id: post-id, user: tx-sender} true)
+        (ok (map-set posts post-id 
+          (merge post {likes: (+ (get likes post) u1)})))
+      )
     )
   )
+)
+
+(define-read-only (has-liked (post-id uint) (user principal))
+  (default-to false (map-get? post-likes {post-id: post-id, user: user}))
 )
