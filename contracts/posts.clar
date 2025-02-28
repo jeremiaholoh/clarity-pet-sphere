@@ -1,11 +1,18 @@
 ;; Posts Contract
+
+;; Constants
+(define-constant ERR-NOT-FOUND (err u404))
+(define-constant ERR-UNAUTHORIZED (err u403))
+(define-constant ERR-ALREADY-LIKED (err u401))
+
 (define-map posts uint 
   {
     owner: principal,
     content: (string-utf8 1024),
     image-url: (optional (string-utf8 256)),
     likes: uint,
-    created-at: uint
+    created-at: uint,
+    active: bool
   }
 )
 
@@ -22,7 +29,8 @@
         content: content,
         image-url: image-url,
         likes: u0,
-        created-at: block-height
+        created-at: block-height,
+        active: true
       })
     )
     (var-set post-counter post-id)
@@ -30,14 +38,25 @@
   )
 )
 
+(define-public (delete-post (post-id uint))
+  (let ((post (unwrap! (map-get? posts post-id) ERR-NOT-FOUND)))
+    (asserts! (is-eq tx-sender (get owner post)) ERR-UNAUTHORIZED)
+    (ok (map-set posts post-id 
+      (merge post {active: false})
+    ))
+  )
+)
+
 (define-public (like-post (post-id uint))
-  (let ((post (unwrap! (map-get? posts post-id) (err u404))))
+  (let ((post (unwrap! (map-get? posts post-id) ERR-NOT-FOUND)))
+    (asserts! (get active post) ERR-NOT-FOUND)
     (if (map-get? post-likes {post-id: post-id, user: tx-sender})
-      (err u403)
+      ERR-ALREADY-LIKED
       (begin
         (map-set post-likes {post-id: post-id, user: tx-sender} true)
         (ok (map-set posts post-id 
-          (merge post {likes: (+ (get likes post) u1)})))
+          (merge post {likes: (+ (get likes post) u1)}))
+        )
       )
     )
   )
