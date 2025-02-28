@@ -1,16 +1,35 @@
 ;; Pet Profile Contract
+
+;; Constants
+(define-constant ERR-NOT-FOUND (err u404))
+(define-constant ERR-UNAUTHORIZED (err u403))
+(define-constant ERR-INVALID-INPUT (err u400))
+
 (define-map profiles
   { owner: principal }
   {
     pet-name: (string-utf8 64),
     pet-type: (string-utf8 32),
     description: (string-utf8 256),
+    image-url: (optional (string-utf8 256)),
     created-at: uint
   }
 )
 
-(define-public (create-profile (pet-name (string-utf8 64)) (pet-type (string-utf8 32)) (description (string-utf8 256)))
-  (let ((profile {owner: tx-sender, pet-name: pet-name, pet-type: pet-type, description: description, created-at: block-height}))
+(define-public (create-profile 
+  (pet-name (string-utf8 64)) 
+  (pet-type (string-utf8 32)) 
+  (description (string-utf8 256))
+  (image-url (optional (string-utf8 256)))
+)
+  (let ((profile {
+    owner: tx-sender, 
+    pet-name: pet-name, 
+    pet-type: pet-type, 
+    description: description,
+    image-url: image-url, 
+    created-at: block-height
+  }))
     (ok (map-set profiles {owner: tx-sender} profile))
   )
 )
@@ -19,11 +38,19 @@
   (ok (map-get? profiles {owner: owner}))
 )
 
-(define-public (update-profile (pet-name (string-utf8 64)) (description (string-utf8 256)))
-  (let ((existing-profile (unwrap! (get-profile tx-sender) (err u404))))
+(define-public (update-profile 
+  (pet-name (string-utf8 64)) 
+  (description (string-utf8 256))
+  (image-url (optional (string-utf8 256)))
+)
+  (let ((existing-profile (unwrap! (get-profile tx-sender) ERR-NOT-FOUND)))
     (ok (map-set profiles 
       {owner: tx-sender}
-      (merge existing-profile {pet-name: pet-name, description: description})
+      (merge existing-profile {
+        pet-name: pet-name, 
+        description: description,
+        image-url: image-url
+      })
     ))
   )
 )
